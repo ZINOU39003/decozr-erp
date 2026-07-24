@@ -105,7 +105,12 @@ export const PortalPayments = () => {
     if (!file) return;
     setUploading(true);
     try {
-      const res: any = await uploadPortalReceipt(file);
+      let toUpload = file;
+      if (file.type.startsWith('image/')) {
+        const { compressImageFile } = await import('../../lib/compressImage');
+        toUpload = await compressImageFile(file, { maxWidth: 1600, maxBytes: 900 * 1024 });
+      }
+      const res: any = await uploadPortalReceipt(toUpload);
       setReceiptUrl(res.url);
       toast.success('تم رفع الوصل');
     } catch {

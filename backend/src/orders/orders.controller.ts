@@ -154,4 +154,17 @@ export class OrdersController {
   async reorder(@Request() req, @Param('id') id: string) {
     return this.ordersService.reorder(id, req.user?.id);
   }
+
+  @Post(':id/media')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Attach progress / before-after images to order' })
+  async addMedia(
+    @Request() req,
+    @Param('id') id: string,
+    @Body()
+    body: { images: { url: string; purpose?: string; caption?: string }[] },
+  ) {
+    return this.ordersService.addProgressImages(id, req.user?.id, body?.images || []);
+  }
 }

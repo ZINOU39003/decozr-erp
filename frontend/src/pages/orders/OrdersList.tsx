@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 import { unlockDocumentUi } from '../../store/uiStore';
+import { exportRowsToCsv } from '../../lib/exportFiles';
 import { 
   ShoppingBag, Plus, Search, Filter, MoreHorizontal, ArrowUpDown, 
   Download, Printer, FileDown, CheckSquare, Trash2, Archive, 
@@ -352,7 +353,21 @@ export const OrdersList = () => {
             <Button variant="outline" size="sm" className="border-[var(--color-border)] gap-2" onClick={() => toast.info('الفلاتر المتقدمة قيد التطوير')}>
               <Filter className="w-4 h-4" /> فلاتر متقدمة <ChevronDown className="w-3 h-3" />
             </Button>
-            <Button variant="outline" size="sm" className="border-[var(--color-border)] gap-2" onClick={() => toast.success('جاري تصدير البيانات إلى ملف Excel...')}>
+            <Button variant="outline" size="sm" className="border-[var(--color-border)] gap-2" onClick={() => {
+              exportRowsToCsv(
+                `orders-${new Date().toISOString().slice(0, 10)}.csv`,
+                ['رقم الطلب', 'العميل', 'الحالة', 'الإجمالي', 'المتبقي', 'التاريخ'],
+                data.map((o: any) => [
+                  o.order_number || '',
+                  o.customer?.name_ar || '',
+                  o.status || '',
+                  o.revenue ?? o.total ?? 0,
+                  o.remaining ?? 0,
+                  o.created_at ? new Date(o.created_at).toLocaleDateString('ar-DZ') : '',
+                ]),
+              );
+              toast.success('تم تصدير الطلبات إلى Excel/CSV');
+            }}>
               <FileDown className="w-4 h-4" /> تصدير Excel
             </Button>
           </div>
@@ -472,18 +487,27 @@ export const OrdersList = () => {
               </TableBody>
             </Table>
           </div>
+        ) : viewMode === 'kanban' ? (
+          <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] flex-col gap-4 p-8">
+            <LayoutGrid className="w-12 h-12 text-[var(--color-primary-500)]/50" />
+            <h2 className="text-xl font-bold text-[var(--color-text-main)]">لوحة كانبان للإنتاج</h2>
+            <p className="max-w-md text-center">
+              لسحب الطلبات بين المراحل الملونة استخدم لوحة الإنتاج المخصّصة.
+            </p>
+            <Button onClick={() => navigate('/production')}>فتح لوحة كانبان</Button>
+            <Button variant="outline" onClick={() => setViewMode('table')}>العودة للجدول</Button>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] flex-col gap-4">
             <div className="p-6 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)]">
-              {viewMode === 'kanban' ? <LayoutGrid className="w-12 h-12 text-[var(--color-primary-500)]/50" /> : 
-               viewMode === 'calendar' ? <CalendarIcon className="w-12 h-12 text-[var(--color-primary-500)]/50" /> : 
+              {viewMode === 'calendar' ? <CalendarIcon className="w-12 h-12 text-[var(--color-primary-500)]/50" /> : 
                <Clock className="w-12 h-12 text-[var(--color-primary-500)]/50" />}
             </div>
             <h2 className="text-xl font-bold text-[var(--color-text-main)]">
-              عرض {viewMode === 'kanban' ? 'مخطط Kanban' : viewMode === 'calendar' ? 'التقويم' : 'السجل الزمني'} قيد التطوير
+              عرض {viewMode === 'calendar' ? 'التقويم' : 'السجل الزمني'} قيد التطوير
             </h2>
             <p className="max-w-md text-center">
-              هذه الشاشة المتقدمة سيتم تفعيلها في تحديث لاحق. حالياً يرجى استخدام عرض الجدول (Table View) لإدارة الطلبات.
+              هذه الشاشة المتقدمة سيتم تفعيلها في تحديث لاحق. حالياً يرجى استخدام عرض الجدول أو تفاصيل الطلب لرؤية الخط الزمني.
             </p>
             <Button variant="outline" onClick={() => setViewMode('table')}>العودة للجدول</Button>
           </div>

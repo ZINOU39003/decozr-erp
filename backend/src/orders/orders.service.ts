@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { DesignsService } from '../designs/designs.service';
 import { MachinesService } from '../machines/machines.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { WhatsappService } from '../notifications/whatsapp.service';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -10,6 +12,8 @@ export class OrdersService {
     private prisma: PrismaService,
     private designsService: DesignsService,
     private machinesService: MachinesService,
+    private notifications: NotificationsService,
+    private whatsapp: WhatsappService,
   ) {}
 
   private async resolveSystemUserId(preferred?: string) {
@@ -256,6 +260,18 @@ export class OrdersService {
       include: { items: true, customer: true },
     });
 
+    // Workshop alert: new order
+    try {
+      await this.notifications.notifyWorkshopStaff(
+        'طلب جديد',
+        `${order.order_number} — ${order.customer?.name_ar || 'عميل'} · ${Number(order.total).toLocaleString()} د.ج`,
+        'new_order',
+        { order_id: order.id, link: `/orders/${order.id}`, play_sound: true },
+      );
+    } catch {
+      /* non-blocking */
+    }
+
     return order;
   }
 
@@ -313,15 +329,65 @@ export class OrdersService {
     });
   }
 
+  private async notifyOrderStatusChange(order: {
+    id: string;
+    order_number: string;
+    customer_id: string;
+    customer?: { phone?: string | null; name_ar?: string } | null;
+    status: string;
+  }) {
+    try {
+      const label = this.whatsapp.statusLabel(order.status);
+      const wa = await this.whatsapp.notifyCustomerStatus({
+        phone: order.customer?.phone,
+        customerName: order.customer?.name_ar,
+        orderNumber: order.order_number,
+        status: order.status,
+        orderId: order.id,
+      });
+
+      await this.notifications.notifyCustomerUsers(
+        order.customer_id,
+        `تحديث الطلب ${order.order_number}`,
+        `أصبحت حالة طلبك: ${label}`,
+        'order_status',
+        {
+          order_id: order.id,
+          status: order.status,
+          whatsapp_link: wa.link,
+          whatsapp_sent: wa.sent,
+          link: `/portal/orders/${order.id}`,
+        },
+      );
+
+      if (wa.link && !wa.sent) {
+        await this.notifications.notifyWorkshopStaff(
+          `واتساب للعميل — ${order.order_number}`,
+          `أرسل تحديث الحالة «${label}» عبر واتساب`,
+          'whatsapp_pending',
+          { order_id: order.id, whatsapp_link: wa.link, play_sound: false },
+        );
+      }
+    } catch {
+      /* non-blocking */
+    }
+  }
+
   async changeStatus(id: string, userId: string | undefined, toStatus: string, notes?: string) {
     const changerId = await this.resolveSystemUserId(userId);
-    const order = await this.prisma.order.findUnique({ where: { id } });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { customer: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
 
     const updated = await this.prisma.order.update({
       where: { id },
       data: {
         status: toStatus,
+        ...(toStatus === 'delivered' || toStatus === 'completed'
+          ? { delivered_at: new Date() }
+          : {}),
         statusHistory: {
           create: {
             from_status: order.status,
@@ -331,8 +397,39 @@ export class OrdersService {
           },
         },
       },
+      include: { customer: true },
     });
+
+    await this.notifyOrderStatusChange(updated);
     return updated;
+  }
+
+  async addProgressImages(
+    id: string,
+    userId: string | undefined,
+    images: { url: string; purpose?: string; caption?: string }[],
+  ) {
+    const order = await this.findOne(id);
+    if (!order) throw new NotFoundException('Order not found');
+    const existing = Array.isArray((order as any).progress_images)
+      ? ([...(order as any).progress_images] as any[])
+      : [];
+    const now = new Date().toISOString();
+    for (const img of images || []) {
+      if (!img?.url) continue;
+      existing.push({
+        url: img.url,
+        purpose: img.purpose || 'progress',
+        caption: img.caption || '',
+        created_at: now,
+        uploaded_by: userId || null,
+      });
+    }
+    return this.prisma.order.update({
+      where: { id },
+      data: { progress_images: existing as any },
+      include: { customer: true, items: true },
+    });
   }
 
   async reorder(id: string, userId: string | undefined) {
@@ -511,6 +608,7 @@ export class OrdersService {
       }. ${route.reason_ar}`,
       { order_id: id, suggested: route.suggested },
     );
+    await this.notifyOrderStatusChange(updated);
 
     return {
       order: updated,
@@ -585,6 +683,8 @@ export class OrdersService {
         },
       });
     }
+
+    await this.notifyOrderStatusChange(updated);
 
     return {
       order: updated,

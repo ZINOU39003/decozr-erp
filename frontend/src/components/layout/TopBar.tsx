@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -14,8 +14,10 @@ import {
 import { Button } from '../ui/Button';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useUIStore } from '../../store/uiStore';
-import { getAdminPortalInbox } from '../../services/api';
+import { getAdminPortalInbox, getNotifications } from '../../services/api';
+import { playWorkshopAlert } from '../../lib/workshopAlertSound';
 import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 export function TopBar() {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -24,6 +26,8 @@ export function TopBar() {
   const toggleDarkMode = useUIStore((s) => s.toggleDarkMode);
   const navigate = useNavigate();
   const [showNotif, setShowNotif] = useState(false);
+  const seenIds = useRef<Set<string>>(new Set());
+  const primed = useRef(false);
 
   const inboxQ = useQuery({
     queryKey: ['admin', 'portal', 'inbox'],
@@ -31,9 +35,48 @@ export function TopBar() {
     refetchInterval: 45000,
     retry: 0,
   });
+
+  const notifQ = useQuery({
+    queryKey: ['notifications', 'topbar'],
+    queryFn: () => getNotifications({ limit: 15 }),
+    refetchInterval: 15000,
+    retry: 0,
+  });
+
+  const notifications = ((notifQ.data as any)?.data ?? []) as any[];
+  const unread = Number((notifQ.data as any)?.meta?.unread ?? notifications.filter((n) => !n.is_read).length);
   const pending =
     (inboxQ.data?.counts?.pending_payments || 0) +
     (inboxQ.data?.counts?.custom_requests_new || 0);
+
+  useEffect(() => {
+    if (!notifications.length) return;
+    if (!primed.current) {
+      notifications.forEach((n) => seenIds.current.add(n.id));
+      primed.current = true;
+      return;
+    }
+    const fresh = notifications.filter((n) => !seenIds.current.has(n.id));
+    fresh.forEach((n) => seenIds.current.add(n.id));
+    const alertWorthy = fresh.filter(
+      (n) =>
+        n.notification_type === 'new_order' ||
+        n.metadata?.play_sound ||
+        n.notification_type === 'custom_design' ||
+        n.notification_type === 'payment',
+    );
+    if (alertWorthy.length) {
+      playWorkshopAlert();
+      const first = alertWorthy[0];
+      toast.message(first.title_ar, {
+        description: first.body_ar,
+        action: {
+          label: 'عرض',
+          onClick: () => navigate(first.metadata?.link || '/notifications'),
+        },
+      });
+    }
+  }, [notifications, navigate]);
 
   const initials =
     (currentUser?.full_name || currentUser?.full_name_ar || 'أد')
@@ -103,7 +146,11 @@ export function TopBar() {
               title="الإشعارات"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+              {unread > 0 && (
+                <span className="absolute top-1 right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
             </button>
             <AnimatePresence>
               {showNotif && (
@@ -111,30 +158,46 @@ export function TopBar() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
-                  className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-auto sm:mt-2 top-[4.25rem] sm:top-auto w-auto sm:w-80 bg-white border border-[#E6ECF2] rounded-2xl shadow-xl overflow-hidden z-[60]"
+                  className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-auto sm:mt-2 top-[4.25rem] sm:top-auto w-auto sm:w-96 bg-white border border-[#E6ECF2] rounded-2xl shadow-xl overflow-hidden z-[60]"
                 >
-                  <div className="p-3 border-b border-[#EEF2F6] bg-[#F6F8FB] font-bold text-sm">
-                    تنبيهات البوابة
+                  <div className="p-3 border-b border-[#EEF2F6] bg-[#F6F8FB] font-bold text-sm flex justify-between">
+                    <span>الإشعارات</span>
+                    <span className="text-[#0F766E]">{unread} غير مقروء</span>
                   </div>
-                  <div className="p-3 space-y-2 text-sm">
-                    <p className="text-[#64748B]">
-                      مدفوعات بانتظار الاعتماد:{' '}
-                      <strong>{inboxQ.data?.counts?.pending_payments || 0}</strong>
-                    </p>
-                    <p className="text-[#64748B]">
-                      تصاميم خاصة جديدة:{' '}
-                      <strong>{inboxQ.data?.counts?.custom_requests_new || 0}</strong>
-                    </p>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-[#EEF2F6]">
+                    {notifications.length === 0 && (
+                      <p className="p-4 text-sm text-[#64748B]">لا إشعارات</p>
+                    )}
+                    {notifications.slice(0, 8).map((n) => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        className={`w-full text-right p-3 text-sm hover:bg-[#F6F8FB] ${
+                          !n.is_read ? 'bg-[#0F766E]/5' : ''
+                        }`}
+                        onClick={() => {
+                          setShowNotif(false);
+                          if (n.metadata?.whatsapp_link) {
+                            window.open(n.metadata.whatsapp_link, '_blank');
+                          } else {
+                            navigate(n.metadata?.link || '/notifications');
+                          }
+                        }}
+                      >
+                        <p className="font-bold text-[#15202b] truncate">{n.title_ar}</p>
+                        <p className="text-xs text-[#64748B] mt-0.5 line-clamp-2">{n.body_ar}</p>
+                      </button>
+                    ))}
                   </div>
                   <button
                     type="button"
                     className="w-full p-2.5 text-xs font-bold text-[#0F766E] hover:bg-[#F6F8FB]"
                     onClick={() => {
                       setShowNotif(false);
-                      navigate('/admin/portal');
+                      navigate('/notifications');
                     }}
                   >
-                    فتح بوابة العملاء
+                    مركز الإشعارات
                   </button>
                 </motion.div>
               )}
@@ -159,10 +222,8 @@ export function TopBar() {
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
 
-          <div className="flex items-center gap-2 p-1 pr-1.5 rounded-2xl">
-            <div className="w-9 h-9 rounded-xl bg-[#0F766E] text-white flex items-center justify-center font-bold text-xs">
-              {initials}
-            </div>
+          <div className="mr-1 w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-sm font-black">
+            {initials}
           </div>
         </div>
       </div>

@@ -377,7 +377,13 @@ export const OrderWorkspace = () => {
 
           <div className="mt-6 flex-1">
             <TabsContent value="overview" className="m-0 focus-visible:ring-0">
-              <OverviewTab order={order} />
+              <OverviewTab
+                order={order}
+                onOrderChange={() => {
+                  queryClient.invalidateQueries({ queryKey: ['orders', id] });
+                  queryClient.invalidateQueries({ queryKey: ['orders', id, 'workspace'] });
+                }}
+              />
             </TabsContent>
             <TabsContent value="items" className="m-0 focus-visible:ring-0">
               <ItemsTab order={order} />

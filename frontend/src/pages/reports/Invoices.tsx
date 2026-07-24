@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { exportRowsToCsv, invoiceToPrintHtml, printHtmlAsPdf } from '../../lib/exportFiles';
 import { FileText, Plus, Search, Download, Eye, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -82,7 +83,29 @@ export const Invoices = () => {
             {filtered.length} فاتورة · المبالغ بالدينار الجزائري
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              exportRowsToCsv(
+                `invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+                ['رقم الفاتورة', 'العميل', 'التاريخ', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة'],
+                filtered.map((inv: any) => [
+                  inv.invoice_number || '',
+                  inv.customer_name || '',
+                  formatDate(inv.issue),
+                  inv.total,
+                  inv.paid,
+                  inv.remaining,
+                  inv.status || '',
+                ]),
+              );
+              toast.success('تم تصدير الفواتير إلى Excel/CSV');
+            }}
+          >
+            <Download className="w-4 h-4" /> تصدير Excel
+          </Button>
           <Button variant="outline" className="gap-2" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" /> تحديث
           </Button>
@@ -159,18 +182,34 @@ export const Invoices = () => {
                     <td className="px-4 py-3 text-amber-700">{formatMoney(invoice.remaining)}</td>
                     <td className="px-4 py-3">{getStatusBadge(invoice.status)}</td>
                     <td className="px-4 py-3 text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() =>
-                          invoice.order_id
-                            ? navigate(`/orders/${invoice.order_id}`)
-                            : toast.info('لا يوجد طلب مرتبط')
-                        }
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="inline-flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="PDF"
+                          onClick={() =>
+                            printHtmlAsPdf(
+                              `فاتورة ${invoice.invoice_number}`,
+                              invoiceToPrintHtml(invoice),
+                            )
+                          }
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() =>
+                            invoice.order_id
+                              ? navigate(`/orders/${invoice.order_id}`)
+                              : toast.info('لا يوجد طلب مرتبط')
+                          }
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

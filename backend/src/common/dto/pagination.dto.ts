@@ -60,5 +60,6 @@ export class PaginatedResponseDto<T> {
     page: number;
     lastPage: number;
     limit: number;
+    unread?: number;
   };
 }

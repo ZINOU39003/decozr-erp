@@ -147,10 +147,23 @@ export const dispatchOrderProduction = async (
 ) => apiClient.post(`/orders/${id}/dispatch`, data);
 export const getFollowUpBoard = async () => apiClient.get('/orders/board/follow-up');
 export const reorderOrder = async (id: string) => apiClient.post(`/orders/${id}/reorder`);
+export const addOrderMedia = async (
+  id: string,
+  images: { url: string; purpose?: string; caption?: string }[],
+) => apiClient.post(`/orders/${id}/media`, { images });
 export const startWorkerJobByQr = async (token: string, jobId: string) =>
   apiClient.post(`/orders/by-qr/${token}/jobs/${jobId}/start`);
 export const completeWorkerJobByQr = async (token: string, jobId: string, actual_minutes: number) =>
   apiClient.post(`/orders/by-qr/${token}/jobs/${jobId}/complete`, { actual_minutes });
+
+// --- Workshop notifications ---
+export const getNotifications = async (params?: Record<string, unknown>) =>
+  apiClient.get('/notifications', { params });
+export const getNotificationsUnreadCount = async () =>
+  apiClient.get('/notifications/unread-count');
+export const markNotificationsReadAll = async () => apiClient.patch('/notifications/read-all');
+export const markNotificationRead = async (id: string) =>
+  apiClient.patch(`/notifications/${id}/read`);
 
 // --- Order Workspace ---
 export const getOrderWorkspace = async (id: string) => apiClient.get(`/orders/${id}/workspace`);
@@ -288,7 +301,8 @@ export const uploadDesignImages = async (files: File[]) => {
 };
 
 // --- Finance ---
-export const getInvoices = async () => apiClient.get('/invoices');
+export const getInvoices = async (params?: Record<string, unknown>) =>
+  apiClient.get('/invoices', { params });
 export const getPayments = async () => apiClient.get('/payments');
 
 // --- Admin Portal Bridge ---

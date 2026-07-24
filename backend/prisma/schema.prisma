@@ -436,7 +436,7 @@ model Order {
   created_by            String
   assigned_to           String?
   price_list_id         String
-  status                String    @default("received") // received, pending_review, pending_approval, in_design, in_cutting, in_printing, in_assembly, ready, delivered
+  status                String    @default("received") // received, pending_review, pending_approval, in_design, design_ready, in_cutting, in_printing, in_assembly, ready, delivered
   current_stage_id      String?
   priority              Int       @default(0) // 0=normal, 1=urgent, 2=immediate
   subtotal              Float     @default(0)
@@ -450,6 +450,8 @@ model Order {
   delivery_address      String?
   notes                 String?
   internal_notes        String?
+  /** [{ url, purpose: before|after|progress|design, caption?, created_at }] */
+  progress_images       Json?
   inventory_deducted    Boolean   @default(false)
   reorder_from_order_id String?
   qr_code_token         String?   @unique
