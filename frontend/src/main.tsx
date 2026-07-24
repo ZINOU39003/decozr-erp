@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { registerServiceWorker } from './pwa/registerSW';
+import { bindPwaInstallCapture } from './pwa/usePwaInstall';
 
+// Capture install event before React mounts (Chrome may fire it early)
+bindPwaInstallCapture();
 registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

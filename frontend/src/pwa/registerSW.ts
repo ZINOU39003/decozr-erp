@@ -13,6 +13,8 @@ export function registerServiceWorker() {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then((reg) => {
+        // Ready SW helps Chrome enable «تثبيت وإضافة اختصار»
+        navigator.serviceWorker.ready.catch(() => {});
         setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
       })
       .catch((err) => {
@@ -20,6 +22,10 @@ export function registerServiceWorker() {
       });
   };
 
-  if (document.readyState === 'complete') register();
-  else window.addEventListener('load', register);
+  // Register ASAP (don't wait for full window load)
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    register();
+  } else {
+    document.addEventListener('DOMContentLoaded', register, { once: true });
+  }
 }
