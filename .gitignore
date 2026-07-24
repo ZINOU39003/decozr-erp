@@ -8,7 +8,10 @@ build/
 *.db-journal
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
-uploads/
+# Uploaded media only (do not ignore backend/src/uploads source module)
+/uploads/
+backend/uploads/
+frontend/uploads/
 .DS_Store
 coverage/
 .turbo/

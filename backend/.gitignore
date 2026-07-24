@@ -398,6 +398,7 @@ Temporary Items
 dist
 .webpack
 .serverless/**/*.zip
-uploads/
+# Media storage only — keep src/uploads Nest module tracked
+/uploads/
 prisma/*.db
 prisma/*.db-journal
