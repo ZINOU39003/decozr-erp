@@ -1,0 +1,1043 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  phone         String?   @unique
+  password_hash String
+  full_name_ar  String
+  avatar_url    String?
+  status        String    @default("active") // active, inactive, suspended
+  customer_id   String?
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  customer             Customer?             @relation(fields: [customer_id], references: [id])
+  userRoles            UserRole[]
+  userPermissions      UserPermission[]
+  createdDesigns       Design[]
+  createdVersions      DesignVersion[]
+  assignedJobs         MachineJob[]
+  createdOrders        Order[]               @relation("OrderCreator")
+  assignedOrders       Order[]               @relation("OrderAssignee")
+  statusChanges        OrderStatusHistory[]
+  productionTasks      OrderProductionTask[]
+  uploadedFiles        File[]
+  inventoryMovements   InventoryMovement[]
+  recordedPayments     Payment[]
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+  refreshTokens        RefreshToken[]
+  updatedSettings      SystemSettings[]
+  orderMessages        OrderMessage[]
+  supportMessages      PortalSupportMessage[]
+  customerActivities   CustomerActivity[]    @relation("ActivityCreator")
+  maintenanceLogs      MachineMaintenanceLog[] @relation("MaintenanceCreator")
+  employee             Employee?
+  tenantId             String?
+  createdBy            String?
+  updatedBy            String?
+}
+
+model Role {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  name_ar        String
+  slug           String   @unique
+  description_ar String?
+  is_system      Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+  updatedAt       DateTime         @updatedAt
+  tenantId        String?
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+}
+
+model Permission {
+  id             String  @id @default(uuid())
+  module         String
+  action         String
+  slug           String  @unique
+  description_ar String?
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tenantId        String?
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+}
+
+model UserRole {
+  user_id     String
+  role_id     String
+  assigned_at DateTime @default(now())
+  assigned_by String?
+
+  user      User      @relation(fields: [user_id], references: [id])
+  role      Role      @relation(fields: [role_id], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  @@id([user_id, role_id])
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+
+  role       Role       @relation(fields: [role_id], references: [id])
+  permission Permission @relation(fields: [permission_id], references: [id])
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  tenantId   String?
+  createdBy  String?
+  updatedBy  String?
+  deletedAt  DateTime?
+
+  @@id([role_id, permission_id])
+}
+
+/** Per-user permission override on top of role templates */
+model UserPermission {
+  user_id       String
+  permission_id String
+  effect        String   @default("allow") // allow | deny
+
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@id([user_id, permission_id])
+}
+
+model DesignCategory {
+  id         String  @id @default(uuid())
+  name_ar    String
+  slug       String  @unique
+  parent_id  String?
+  sort_order Int     @default(0)
+  icon       String?
+  is_active  Boolean @default(true)
+
+  parent    DesignCategory?  @relation("CategoryParent", fields: [parent_id], references: [id])
+  children  DesignCategory[] @relation("CategoryParent")
+  designs   Design[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Design {
+  id                 String    @id @default(uuid())
+  code               String    @unique
+  name_ar            String
+  description_ar     String?
+  category_id        String
+  current_version_id String?
+  is_active          Boolean   @default(true)
+  library_status     String    @default("draft") // draft, private, public, archived
+  owner_type         String    @default("workshop") // workshop, customer
+  owner_customer_id  String?
+  visibility         String    @default("public") // private, public
+  sell_policy        String    @default("everyone") // owner_only, workshop_only, everyone
+  image_url          String?
+  gallery_images     Json?     // string[] of image URLs / data URLs
+  created_by         String
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+
+  category       DesignCategory   @relation(fields: [category_id], references: [id])
+  creator        User             @relation(fields: [created_by], references: [id])
+  ownerCustomer  Customer?        @relation("DesignOwner", fields: [owner_customer_id], references: [id])
+  versions       DesignVersion[]  @relation("DesignVersions")
+  orderItems     OrderItem[]
+  designSeasons  DesignSeason[]
+  designWorkflows DesignWorkflow[]
+  favoritedBy    CustomerFavorite[]
+  tenantId       String?
+  createdBy      String?
+  updatedBy      String?
+}
+
+model DesignVersion {
+  id                         String   @id @default(uuid())
+  design_id                  String
+  version_number             Int
+  changelog                  String?
+  manufacturing_time_minutes Int      @default(0)
+  requires_printing          Boolean  @default(false)
+  requires_assembly          Boolean  @default(false)
+  requires_led               Boolean  @default(false)
+  size_customizable          Boolean  @default(true)
+  color_customizable         Boolean  @default(true)
+  status                     String   @default("draft") // draft, active, archived
+  created_by                 String
+  created_at                 DateTime @default(now())
+
+  design               Design                      @relation("DesignVersions", fields: [design_id], references: [id])
+  creator              User                        @relation(fields: [created_by], references: [id])
+  customizationOptions DesignCustomizationOption[]
+  bomMaterials         DesignBomMaterial[]
+  bomLabor             DesignBomLabor[]
+  versionFiles         DesignVersionFile[]
+  priceRules           DesignPriceRule[]
+  orderItems           OrderItem[]
+  updatedAt            DateTime                    @updatedAt
+  tenantId             String?
+  createdBy            String?
+  updatedBy            String?
+  deletedAt            DateTime?
+
+  @@unique([design_id, version_number])
+}
+
+model DesignCustomizationOption {
+  id                String  @id @default(uuid())
+  design_version_id String
+  option_key        String
+  label_ar          String
+  option_type       String // select, multi_select, number, text, dimension, color, boolean
+  choices           Json?
+  default_value     String?
+  is_required       Boolean @default(true)
+  depends_on        Json?
+  sort_order        Int     @default(0)
+
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model Material {
+  id              String   @id @default(uuid())
+  sku             String   @unique
+  name_ar         String
+  unit            String
+  current_stock   Float    @default(0)
+  min_stock_level Float    @default(0)
+  unit_cost       Float    @default(0)
+  supplier_name   String?
+  is_active       Boolean  @default(true)
+  updated_at      DateTime @updatedAt
+
+  bomMaterials       DesignBomMaterial[]
+  inventoryMovements InventoryMovement[]
+  offcutPieces       OffcutPiece[]
+  createdAt          DateTime            @default(now())
+  tenantId           String?
+  createdBy          String?
+  updatedBy          String?
+  deletedAt          DateTime?
+}
+
+model DesignBomMaterial {
+  id                String  @id @default(uuid())
+  design_version_id String
+  material_id       String
+  quantity          Float
+  unit              String
+  waste_pct         Float   @default(0)
+  condition_expr    String?
+
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  material      Material      @relation(fields: [material_id], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model Machine {
+  id                     String    @id @default(uuid())
+  code                   String    @unique
+  name_ar                String
+  machine_type           String // laser, cnc, printer, uv_printer, plotter, assembly_bench, other
+  cost_per_minute        Float     @default(0)
+  daily_capacity_minutes Int       @default(480)
+  last_maintenance_at    DateTime?
+  next_maintenance_at    DateTime?
+  operational_status     String    @default("operational") // operational, maintenance, broken
+  is_active              Boolean   @default(true)
+  notes                  String?
+
+  bomLabor          DesignBomLabor[]
+  jobs              MachineJob[]
+  maintenanceLogs   MachineMaintenanceLog[]
+  capacitySnapshots CapacitySnapshot[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  tenantId          String?
+  createdBy         String?
+  updatedBy         String?
+  deletedAt         DateTime?
+}
+
+model DesignBomLabor {
+  id                String  @id @default(uuid())
+  design_version_id String
+  machine_id        String?
+  production_stage  String // design, cutting, printing, assembly
+  minutes           Int
+  condition_expr    String?
+
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  machine       Machine?      @relation(fields: [machine_id], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model MachineJob {
+  id                String    @id @default(uuid())
+  order_id          String
+  order_item_id     String
+  machine_id        String
+  worker_id         String?
+  production_stage  String // design, cutting, printing, assembly
+  estimated_minutes Int
+  actual_minutes    Int?
+  status            String    @default("pending") // pending, in_progress, completed, paused, cancelled
+  started_at        DateTime?
+  completed_at      DateTime?
+  notes             String?
+
+  machine   Machine   @relation(fields: [machine_id], references: [id])
+  worker    User?     @relation(fields: [worker_id], references: [id])
+  order     Order     @relation(fields: [order_id], references: [id])
+  orderItem OrderItem @relation(fields: [order_item_id], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  name_ar       String
+  phone         String
+  phone_alt     String?
+  email         String?
+  address_ar    String?
+  city          String?
+  customer_type String    @default("individual") // individual, company, distributor
+  price_list_id String
+  credit_limit  Float     @default(0)
+  balance       Float     @default(0)
+  tax_number    String?
+  notes         String?
+  avatar_url    String?
+  is_active     Boolean   @default(true)
+  created_by    String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  priceList    PriceList          @relation(fields: [price_list_id], references: [id])
+  orders       Order[]
+  payments     Payment[]
+  debts        CustomerDebt[]
+  ownedDesigns Design[]           @relation("DesignOwner")
+  activities   CustomerActivity[]
+  portalUsers  User[]
+  supportMessages PortalSupportMessage[]
+  favorites    CustomerFavorite[]
+  appointments CustomerAppointment[]
+  customRequests CustomDesignRequest[]
+  tenantId     String?
+  createdBy    String?
+  updatedBy    String?
+}
+
+model PriceList {
+  id                   String    @id @default(uuid())
+  name_ar              String
+  list_type            String    @unique // retail, wholesale, distributor, vip
+  default_discount_pct Float     @default(0)
+  currency             String    @default("DZD")
+  is_active            Boolean   @default(true)
+  valid_from           DateTime?
+  valid_until          DateTime?
+  created_at           DateTime  @default(now())
+
+  customers        Customer[]
+  orders           Order[]
+  designPriceRules DesignPriceRule[]
+  updatedAt        DateTime          @updatedAt
+  tenantId         String?
+  createdBy        String?
+  updatedBy        String?
+  deletedAt        DateTime?
+}
+
+model DesignPriceRule {
+  id                   String  @id @default(uuid())
+  design_version_id    String
+  price_list_id        String
+  base_price           Float
+  option_modifiers     Json?
+  margin_pct           Float   @default(25)
+  price_per_sqm        Float?
+  price_per_cut_meter  Float?
+  print_cost           Float?
+
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  priceList     PriceList     @relation(fields: [price_list_id], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+
+  @@unique([design_version_id, price_list_id])
+}
+
+model Order {
+  id                    String    @id @default(uuid())
+  order_number          String    @unique
+  customer_id           String
+  created_by            String
+  assigned_to           String?
+  price_list_id         String
+  status                String    @default("received") // received, pending_review, pending_approval, in_design, in_cutting, in_printing, in_assembly, ready, delivered
+  current_stage_id      String?
+  priority              Int       @default(0) // 0=normal, 1=urgent, 2=immediate
+  subtotal              Float     @default(0)
+  discount_pct          Float     @default(0)
+  discount_amount       Float     @default(0)
+  tax_amount            Float     @default(0)
+  total                 Float     @default(0)
+  paid_amount           Float     @default(0)
+  due_date              DateTime?
+  promised_date         DateTime?
+  delivery_address      String?
+  notes                 String?
+  internal_notes        String?
+  inventory_deducted    Boolean   @default(false)
+  reorder_from_order_id String?
+  qr_code_token         String?   @unique
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  delivered_at          DateTime?
+
+  customer     Customer       @relation(fields: [customer_id], references: [id])
+  creator      User           @relation("OrderCreator", fields: [created_by], references: [id])
+  assignee     User?          @relation("OrderAssignee", fields: [assigned_to], references: [id])
+  priceList    PriceList      @relation(fields: [price_list_id], references: [id])
+  reorderFrom  Order?         @relation("Reorders", fields: [reorder_from_order_id], references: [id])
+  reorders     Order[]        @relation("Reorders")
+  currentStage WorkflowStage? @relation(fields: [current_stage_id], references: [id])
+
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+  productionTasks    OrderProductionTask[]
+  orderFiles         OrderFile[]
+  payments           Payment[]
+  inventoryMovements InventoryMovement[]
+  debts              CustomerDebt[]
+  machineJobs        MachineJob[]
+  invoices           Invoice[]
+  messages           OrderMessage[]
+  activities         CustomerActivity[]
+  offcutsCreated     OffcutPiece[]        @relation("OffcutSource")
+  offcutsUsed        OffcutPiece[]        @relation("OffcutUsed")
+  tenantId           String?
+  createdBy          String?
+  updatedBy          String?
+  deletedAt          DateTime?
+}
+
+model OrderItem {
+  id                      String  @id @default(uuid())
+  order_id                String
+  design_id               String
+  design_version_id       String
+  design_code_snapshot    String
+  design_name_snapshot    String
+  version_number_snapshot Int
+  quantity                Int
+  options_snapshot        Json
+  computed_bom_snapshot   Json?
+  unit_cost               Float?
+  unit_price              Float
+  margin                  Float?
+  discount_pct            Float   @default(0)
+  line_total              Float
+  notes                   String?
+  sort_order              Int     @default(0)
+
+  order         Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  design        Design        @relation(fields: [design_id], references: [id])
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  machineJobs   MachineJob[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model OrderStatusHistory {
+  id               String   @id @default(uuid())
+  order_id         String
+  from_status      String?
+  to_status        String
+  changed_by       String
+  notes            String?
+  duration_seconds Int?
+  changed_at       DateTime @default(now())
+
+  order     Order     @relation(fields: [order_id], references: [id])
+  changer   User      @relation(fields: [changed_by], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model OrderProductionTask {
+  id           String    @id @default(uuid())
+  order_id     String
+  stage        String
+  worker_id    String?
+  task_status  String    @default("pending") // pending, in_progress, completed
+  started_at   DateTime?
+  completed_at DateTime?
+  notes        String?
+
+  order     Order     @relation(fields: [order_id], references: [id])
+  worker    User?     @relation(fields: [worker_id], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model File {
+  id              String   @id @default(uuid())
+  original_name   String
+  stored_name     String
+  file_type       String
+  mime_type       String
+  size_bytes      Int
+  storage_path    String
+  storage_bucket  String   @default("workshop-files")
+  checksum_sha256 String?
+  uploaded_by     String
+  created_at      DateTime @default(now())
+
+  uploader      User                @relation(fields: [uploaded_by], references: [id])
+  orderFiles    OrderFile[]
+  versionFiles  DesignVersionFile[]
+  orderMessages OrderMessage[]
+  updatedAt     DateTime            @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model OrderFile {
+  id           String   @id @default(uuid())
+  order_id     String
+  file_id      String
+  file_purpose String // design, proof, production, delivery
+  uploaded_at  DateTime @default(now())
+
+  order     Order     @relation(fields: [order_id], references: [id])
+  file      File      @relation(fields: [file_id], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  @@unique([order_id, file_id])
+}
+
+model DesignVersionFile {
+  id                String @id @default(uuid())
+  design_version_id String
+  file_id           String
+  file_role         String // source, cutting, preview, thumbnail
+  sort_order        Int    @default(0)
+
+  designVersion DesignVersion @relation(fields: [design_version_id], references: [id])
+  file          File          @relation(fields: [file_id], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model InventoryMovement {
+  id                String   @id @default(uuid())
+  material_id       String
+  order_id          String?
+  movement_type     String // manufacturing_deduct, purchase_add, adjustment, return
+  quantity          Float // negative for deduction
+  stock_before      Float
+  stock_after       Float
+  unit_cost_at_time Float?
+  notes             String?
+  created_by        String
+  created_at        DateTime @default(now())
+
+  material  Material  @relation(fields: [material_id], references: [id])
+  order     Order?    @relation(fields: [order_id], references: [id])
+  creator   User      @relation(fields: [created_by], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  payment_number String   @unique
+  order_id       String?
+  invoice_id     String?
+  customer_id    String
+  amount         Float
+  payment_method String
+  reference      String?
+  notes          String?
+  receipt_url    String?
+  status         String   @default("confirmed") // pending_review, confirmed, rejected
+  recorded_by    String
+  paid_at        DateTime
+  created_at     DateTime @default(now())
+
+  order     Order?    @relation(fields: [order_id], references: [id])
+  invoice   Invoice?  @relation(fields: [invoice_id], references: [id])
+  customer  Customer  @relation(fields: [customer_id], references: [id])
+  recorder  User      @relation(fields: [recorded_by], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model CustomerDebt {
+  id          String   @id @default(uuid())
+  customer_id String
+  order_id    String?
+  amount      Float
+  paid_amount Float    @default(0)
+  due_date    DateTime
+  status      String   @default("open") // open, partial, paid, overdue
+  created_at  DateTime @default(now())
+
+  customer  Customer  @relation(fields: [customer_id], references: [id])
+  order     Order?    @relation(fields: [order_id], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Notification {
+  id                String    @id @default(uuid())
+  user_id           String
+  notification_type String
+  title_ar          String
+  body_ar           String
+  metadata          Json?
+  is_read           Boolean   @default(false)
+  read_at           DateTime?
+  created_at        DateTime  @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String?
+  user_email  String?
+  entity_type String
+  entity_id   String
+  action      String // create, update, delete, login, export
+  old_values  Json?
+  new_values  Json?
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+
+  user      User?     @relation(fields: [user_id], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  user_id    String
+  token_hash String    @unique
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id])
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model SystemSettings {
+  key            String   @id
+  value          Json
+  description_ar String?
+  updated_by     String?
+  updated_at     DateTime @default(now()) @updatedAt
+
+  updater   User?     @relation(fields: [updated_by], references: [id])
+  createdAt DateTime  @default(now())
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Backup {
+  id            String    @id @default(uuid())
+  backup_type   String // full, incremental
+  file_path     String
+  size_bytes    Int?
+  status        String // running, completed, failed
+  started_at    DateTime
+  completed_at  DateTime?
+  error_message String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenantId      String?
+  createdBy     String?
+  updatedBy     String?
+  deletedAt     DateTime?
+}
+
+model Supplier {
+  id        String    @id @default(uuid())
+  name_ar   String
+  phone     String?
+  category  String?
+  is_active Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+}
+
+model Invoice {
+  id             String    @id @default(uuid())
+  invoice_number String    @unique
+  order_id       String
+  total_amount   Float
+  status         String    @default("unpaid")
+  issue_date     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenantId       String?
+  createdBy      String?
+  updatedBy      String?
+  deletedAt      DateTime?
+
+  order    Order     @relation(fields: [order_id], references: [id])
+  payments Payment[]
+}
+
+model Employee {
+  id              String    @id @default(uuid())
+  full_name_ar    String
+  employee_number String    @unique
+  position        String?
+  phone           String?
+  monthly_salary  Float     @default(0)
+  user_id         String?   @unique
+  is_active       Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tenantId        String?
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+
+  user          User?                 @relation(fields: [user_id], references: [id])
+  attendances   EmployeeAttendance[]
+  salaryRecords EmployeeSalaryRecord[]
+}
+
+model EmployeeAttendance {
+  id          String   @id @default(uuid())
+  employee_id String
+  date        DateTime
+  status      String   @default("present") // present, absent, leave, late
+  notes       String?
+  created_at  DateTime @default(now())
+
+  employee Employee @relation(fields: [employee_id], references: [id])
+
+  @@unique([employee_id, date])
+}
+
+model EmployeeSalaryRecord {
+  id          String   @id @default(uuid())
+  employee_id String
+  month       String // YYYY-MM
+  amount      Float
+  status      String   @default("pending") // pending, paid
+  notes       String?
+  paid_at     DateTime?
+  created_at  DateTime @default(now())
+
+  employee Employee @relation(fields: [employee_id], references: [id])
+
+  @@unique([employee_id, month])
+}
+
+// --- DecoZR ERP v3 models ---
+
+model OffcutPiece {
+  id              String   @id @default(uuid())
+  material_id     String
+  width_cm        Float
+  height_cm       Float
+  source_order_id String?
+  used_in_order_id String?
+  status          String   @default("available") // available, reserved, used
+  location        String?
+  notes           String?
+  created_at      DateTime @default(now())
+
+  material     Material @relation(fields: [material_id], references: [id])
+  sourceOrder  Order?   @relation("OffcutSource", fields: [source_order_id], references: [id])
+  usedInOrder  Order?   @relation("OffcutUsed", fields: [used_in_order_id], references: [id])
+}
+
+model MachineMaintenanceLog {
+  id           String   @id @default(uuid())
+  machine_id   String
+  performed_at DateTime
+  next_due     DateTime
+  notes        String?
+  cost         Float?
+  created_by   String?
+  created_at   DateTime @default(now())
+
+  machine Machine @relation(fields: [machine_id], references: [id])
+  creator User?   @relation("MaintenanceCreator", fields: [created_by], references: [id])
+}
+
+model CapacitySnapshot {
+  id                String   @id @default(uuid())
+  machine_id        String
+  date              DateTime
+  available_minutes Int
+  required_minutes  Int
+  overload          Boolean  @default(false)
+
+  machine Machine @relation(fields: [machine_id], references: [id])
+
+  @@unique([machine_id, date])
+}
+
+model Season {
+  id         String   @id @default(uuid())
+  name_ar    String
+  start_date DateTime
+  end_date   DateTime
+  priority   Int      @default(0)
+  is_active  Boolean  @default(true)
+
+  designSeasons DesignSeason[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model DesignSeason {
+  design_id String
+  season_id String
+
+  design Design @relation(fields: [design_id], references: [id])
+  season Season @relation(fields: [season_id], references: [id])
+
+  @@id([design_id, season_id])
+}
+
+model WorkflowTemplate {
+  id         String   @id @default(uuid())
+  name_ar    String
+  slug       String   @unique
+  is_default Boolean  @default(false)
+
+  stages          WorkflowStage[]
+  designWorkflows DesignWorkflow[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model WorkflowStage {
+  id          String  @id @default(uuid())
+  template_id String
+  slug        String
+  name_ar     String
+  sort_order  Int     @default(0)
+  color       String?
+  is_terminal Boolean @default(false)
+
+  template WorkflowTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@unique([template_id, slug])
+}
+
+model DesignWorkflow {
+  design_id   String
+  template_id String
+
+  design   Design           @relation(fields: [design_id], references: [id])
+  template WorkflowTemplate @relation(fields: [template_id], references: [id])
+
+  @@id([design_id, template_id])
+}
+
+model CustomerActivity {
+  id            String   @id @default(uuid())
+  customer_id   String
+  order_id      String?
+  activity_type String // order_created, payment, call, complaint, note, delivered
+  title_ar      String
+  body_ar       String?
+  created_by    String?
+  created_at    DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+  order    Order?   @relation(fields: [order_id], references: [id])
+  creator  User?    @relation("ActivityCreator", fields: [created_by], references: [id])
+}
+
+model OrderMessage {
+  id                 String   @id @default(uuid())
+  order_id           String
+  user_id            String
+  body_ar            String
+  attachment_file_id String?
+  created_at         DateTime @default(now())
+
+  order      Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  user       User  @relation(fields: [user_id], references: [id])
+  attachment File? @relation(fields: [attachment_file_id], references: [id])
+}
+
+model PortalSupportMessage {
+  id             String   @id @default(uuid())
+  customer_id    String
+  sender_user_id String
+  body_ar        String
+  attachment_url String?
+  created_at     DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [sender_user_id], references: [id])
+}
+
+model CustomerFavorite {
+  id          String   @id @default(uuid())
+  customer_id String
+  design_id   String
+  created_at  DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  design   Design   @relation(fields: [design_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_id, design_id])
+}
+
+model CustomerAppointment {
+  id          String   @id @default(uuid())
+  customer_id String
+  title_ar    String
+  notes       String?
+  location_ar String?
+  starts_at   DateTime
+  status      String   @default("scheduled") // scheduled, done, cancelled
+  created_at  DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}
+
+model CustomDesignRequest {
+  id              String   @id @default(uuid())
+  customer_id     String
+  request_type    String   // design, cnc, wood, laser, furniture, other
+  title_ar        String
+  description_ar  String
+  width_cm        Float?
+  height_cm       Float?
+  depth_cm        Float?
+  material_hint   String?
+  reference_image String?
+  status          String   @default("new") // new, reviewing, quoted, accepted, rejected
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}

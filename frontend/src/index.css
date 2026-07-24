@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+/* Semantic tokens — light by default */
+:root {
+  --dz-primary-50: #f0fdfa;
+  --dz-primary-100: #ccfbf1;
+  --dz-primary-200: #99f6e4;
+  --dz-primary-300: #5eead4;
+  --dz-primary-400: #2dd4bf;
+  --dz-primary-500: #0f766e;
+  --dz-primary-600: #0d9488;
+  --dz-primary-700: #0f766e;
+  --dz-primary-800: #115e59;
+  --dz-primary-900: #134e4a;
+
+  --dz-success: #16a34a;
+  --dz-danger: #dc2626;
+  --dz-warning: #d97706;
+  --dz-info: #0284c7;
+
+  --dz-bg-main: #eef3f6;
+  --dz-bg-sidebar: #ffffff;
+  --dz-bg-card: #ffffff;
+  --dz-bg-hover: rgba(15, 118, 110, 0.07);
+
+  --dz-border: rgba(15, 40, 50, 0.1);
+  --dz-border-hover: rgba(15, 40, 50, 0.18);
+
+  --dz-text-main: #15202b;
+  --dz-text-muted: #5b6b7c;
+}
+
+html.dark {
+  --dz-primary-50: #134e4a;
+  --dz-primary-100: #115e59;
+  --dz-primary-200: #0f766e;
+  --dz-primary-300: #14b8a6;
+  --dz-primary-400: #5eead4;
+  --dz-primary-500: #2dd4bf;
+  --dz-primary-600: #14b8a6;
+  --dz-primary-700: #0d9488;
+  --dz-primary-800: #0f766e;
+  --dz-primary-900: #134e4a;
+
+  --dz-bg-main: #10161c;
+  --dz-bg-sidebar: #161d25;
+  --dz-bg-card: #1b2430;
+  --dz-bg-hover: rgba(45, 212, 191, 0.1);
+
+  --dz-border: rgba(255, 255, 255, 0.09);
+  --dz-border-hover: rgba(255, 255, 255, 0.16);
+
+  --dz-text-main: #f1f5f9;
+  --dz-text-muted: #94a3b8;
+}
+
+@theme {
+  --color-primary-50: var(--dz-primary-50);
+  --color-primary-100: var(--dz-primary-100);
+  --color-primary-200: var(--dz-primary-200);
+  --color-primary-300: var(--dz-primary-300);
+  --color-primary-400: var(--dz-primary-400);
+  --color-primary-500: var(--dz-primary-500);
+  --color-primary-600: var(--dz-primary-600);
+  --color-primary-700: var(--dz-primary-700);
+  --color-primary-800: var(--dz-primary-800);
+  --color-primary-900: var(--dz-primary-900);
+
+  --color-success: var(--dz-success);
+  --color-danger: var(--dz-danger);
+  --color-warning: var(--dz-warning);
+  --color-info: var(--dz-info);
+
+  --color-bg-main: var(--dz-bg-main);
+  --color-bg-sidebar: var(--dz-bg-sidebar);
+  --color-bg-card: var(--dz-bg-card);
+  --color-bg-hover: var(--dz-bg-hover);
+
+  --color-border: var(--dz-border);
+  --color-border-hover: var(--dz-border-hover);
+
+  --color-text-main: var(--dz-text-main);
+  --color-text-muted: var(--dz-text-muted);
+
+  --font-sans: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  --radius-xl: 1rem;
+}
+
+body {
+  background-color: var(--dz-bg-main);
+  color: var(--dz-text-main);
+  font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  direction: rtl;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(15, 118, 110, 0.09), transparent),
+    radial-gradient(ellipse 55% 40% at 0% 100%, rgba(2, 132, 199, 0.06), transparent);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+html.dark body {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(45, 212, 191, 0.07), transparent),
+    radial-gradient(ellipse 55% 40% at 0% 100%, rgba(2, 132, 199, 0.04), transparent);
+}
+
+* {
+  border-color: var(--dz-border);
+}
+
+.glass-panel,
+.glass-dark {
+  background-color: color-mix(in srgb, var(--dz-bg-card) 90%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--dz-border);
+  box-shadow:
+    0 1px 2px rgba(15, 40, 50, 0.04),
+    0 14px 36px rgba(15, 40, 50, 0.07);
+  border-radius: 1rem;
+}
+
+html.dark .glass-panel,
+html.dark .glass-dark {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 40, 50, 0.16);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 40, 50, 0.28);
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+}

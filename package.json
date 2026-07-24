@@ -1,0 +1,15 @@
+{
+  "name": "decozr-erp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DecoZR ERP — منصة إدارة ورش التصنيع",
+  "scripts": {
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "dev:api": "npm run start:dev --prefix backend",
+    "dev:web": "npm run dev --prefix frontend",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "db:seed": "npm run db:seed --prefix backend",
+    "setup": "npm run docker:up && npm install --prefix backend && npm install --prefix frontend && npm run db:generate --prefix backend && npm run db:migrate --prefix backend && npm run db:seed --prefix backend"
+  }
+}
