@@ -1,0 +1,53 @@
+name: decozr
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile.api
+    container_name: decozr-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: "file:/data/decozr.db"
+      JWT_SECRET: "${DECOZR_JWT_SECRET:-decozr-change-me-in-production-2026}"
+      JWT_REFRESH_SECRET: "${DECOZR_JWT_REFRESH_SECRET:-decozr-refresh-change-me-2026}"
+      CORS_ORIGIN: "${DECOZR_PUBLIC_URL:-http://127.0.0.1:18080}"
+      DECOZR_SKIP_SEED: "${DECOZR_SKIP_SEED:-0}"
+    volumes:
+      - decozr_sqlite:/data
+      - decozr_uploads:/app/uploads
+    networks:
+      - decozr_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile.web
+    container_name: decozr-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:80"
+    networks:
+      - decozr_net
+
+networks:
+  decozr_net:
+    name: decozr_net
+    driver: bridge
+
+volumes:
+  decozr_sqlite:
+    name: decozr_sqlite
+  decozr_uploads:
+    name: decozr_uploads
