@@ -19,6 +19,9 @@ export class SettingsService {
     const row = await this.prisma.systemSettings.findUnique({
       where: { key: 'storefront' },
     });
+    const httpsRow = await this.prisma.systemSettings.findUnique({
+      where: { key: 'public_https_url' },
+    });
     const defaults = {
       brand_name: 'DecoZR',
       tagline_ar: 'نظام متكامل لإدارة صناعة الأثاث والديكور',
@@ -36,7 +39,23 @@ export class SettingsService {
       about_ar: '',
       working_hours_ar: 'السبت – الخميس · 9:00 – 18:00',
     };
-    return { ...defaults, ...((row?.value as object) || {}) };
+    const httpsFromSettings =
+      typeof httpsRow?.value === 'string'
+        ? httpsRow.value
+        : (httpsRow?.value as any)?.url || '';
+    const public_https_url = (
+      process.env.DECOZR_PUBLIC_HTTPS_URL ||
+      httpsFromSettings ||
+      ''
+    ).replace(/\/$/, '');
+
+    return {
+      ...defaults,
+      ...((row?.value as object) || {}),
+      public_https_url,
+      /** Chrome installs real WebAPK only over HTTPS; HTTP = shortcut with Chrome badge */
+      install_requires_https: true,
+    };
   }
 
   async upsert(key: string, value: unknown, updatedById?: string | null) {
