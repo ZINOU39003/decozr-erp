@@ -176,8 +176,24 @@ export const CustomersList = () => {
       },
     },
     {
+      id: 'orders',
+      header: 'الطلبات',
+      cell: ({ row }) => {
+        const total = Number(row.original.orders_count ?? 0);
+        const active = Number(row.original.active_orders_count ?? 0);
+        return (
+          <span className="text-sm text-[var(--color-text-muted)]">
+            {total}
+            {active > 0 && (
+              <span className="mr-1 text-[var(--color-primary-600)] font-bold">({active} نشط)</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
       id: 'designs',
-      header: 'التصاميم',
+      header: 'تصاميم خاصة',
       cell: ({ row }) => {
         const total = Number(row.original.designs_count ?? 0);
         const open = Number(row.original.open_designs ?? 0);

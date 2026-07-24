@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Download, X, CheckCircle2, Smartphone } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 type BeforeInstallPromptEvent = Event & {
@@ -7,7 +7,8 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const DISMISS_KEY = 'decozr-pwa-install-dismissed-v3';
+const DISMISS_KEY = 'decozr-pwa-install-dismissed-v4';
+const DELAY_MS = 45_000;
 
 function isStandaloneDisplay() {
   return (
@@ -21,12 +22,7 @@ export const PwaInstallBanner = () => {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [standalone, setStandalone] = useState(false);
-  const [swReady, setSwReady] = useState(false);
-  const insecure = typeof window !== 'undefined' && !window.isSecureContext;
-  const isLanHttp =
-    typeof window !== 'undefined' &&
-    window.location.protocol === 'http:' &&
-    /^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname);
+  const [compact, setCompact] = useState(true);
 
   useEffect(() => {
     const alone = isStandaloneDisplay();
@@ -34,12 +30,17 @@ export const PwaInstallBanner = () => {
     if (alone) return;
     if (localStorage.getItem(DISMISS_KEY) === '1') return;
 
-    navigator.serviceWorker?.ready.then(() => setSwReady(true)).catch(() => {});
+    let delayTimer: number | undefined;
+    let deferredEvent: BeforeInstallPromptEvent | null = null;
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      deferredEvent = e as BeforeInstallPromptEvent;
+      setDeferred(deferredEvent);
+      // Soft delay — don't interrupt first visit
+      delayTimer = window.setTimeout(() => {
+        if (localStorage.getItem(DISMISS_KEY) !== '1') setVisible(true);
+      }, DELAY_MS);
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
@@ -49,14 +50,11 @@ export const PwaInstallBanner = () => {
       localStorage.setItem(DISMISS_KEY, '1');
     });
 
-    // Show guidance when install will become a Chrome shortcut
-    if (insecure || isLanHttp) setVisible(true);
-
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isIos) setVisible(true);
-
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-  }, [insecure, isLanHttp]);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      if (delayTimer) window.clearTimeout(delayTimer);
+    };
+  }, []);
 
   if (standalone || !visible) return null;
 
@@ -76,7 +74,20 @@ export const PwaInstallBanner = () => {
     localStorage.setItem(DISMISS_KEY, '1');
   };
 
-  const blocked = insecure || isLanHttp;
+  // Compact corner chip — expands on click
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCompact(false)}
+        className="fixed bottom-4 left-4 z-[100] md:left-auto md:right-6 flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-lg px-3 py-2 text-xs font-bold text-[var(--color-text-main)] hover:bg-[var(--color-bg-hover)] transition-colors"
+        aria-label="تثبيت التطبيق"
+      >
+        <Smartphone className="w-4 h-4 text-[var(--color-primary-600)]" />
+        تثبيت التطبيق
+      </button>
+    );
+  }
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-[100] md:left-auto md:right-6 md:max-w-sm animate-fade-in">
@@ -85,28 +96,15 @@ export const PwaInstallBanner = () => {
           D
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-[var(--color-text-main)]">تثبيت كتطبيق حقيقي</p>
-          {blocked ? (
-            <p className="text-xs text-[var(--color-danger)] mt-1 leading-relaxed flex gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              الرابط الحالي HTTP/شبكي محلي — كروم سيثبّته كاختصار بشعار Chrome. استخدم رابط النفق
-              HTTPS (trycloudflare) ثم احذف الاختصارات القديمة وثبّت من جديد.
-            </p>
-          ) : (
-            <p className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed">
-              {swReady ? (
-                <span className="inline-flex items-center gap-1 text-[var(--color-success)]">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> جاهز للتثبيت كتطبيق مستقل
-                </span>
-              ) : (
-                'جاري تجهيز التطبيق…'
-              )}
-            </p>
-          )}
+          <p className="font-bold text-sm text-[var(--color-text-main)]">تثبيت كتطبيق</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed inline-flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-success)]" />
+            وصول أسرع من الشاشة الرئيسية
+          </p>
           <div className="flex gap-2 mt-3">
-            {deferred && !blocked && (
+            {deferred && (
               <Button size="sm" className="gap-1.5" onClick={install}>
-                <Download className="w-3.5 h-3.5" /> تثبيت التطبيق
+                <Download className="w-3.5 h-3.5" /> تثبيت
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={dismiss}>

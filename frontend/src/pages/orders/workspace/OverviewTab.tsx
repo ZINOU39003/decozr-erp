@@ -30,12 +30,15 @@ export const OverviewTab = ({ order }: { order: any }) => {
                       الإصدار المعتمد: v{item.version_number_snapshot}.0
                     </p>
                   </div>
-                  <div className="text-left">
+                  <div className="text-left space-y-1">
                     <span className="font-bold text-xl block">
-                      {Number(item.unit_price || 0).toLocaleString()} د.ج
+                      {Number(item.line_total ?? item.unit_price * item.quantity ?? 0).toLocaleString()} د.ج
                     </span>
-                    <span className="text-sm text-[var(--color-text-muted)]">
-                      الكمية: {item.quantity}
+                    <span className="text-sm text-[var(--color-text-muted)] block">
+                      {Number(item.unit_price || 0).toLocaleString()} د.ج × {item.quantity}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-muted)] block max-w-[200px]">
+                      يشمل قائمة الأسعار والتخصيص (قد يختلف عن سعر الكتالوج العام)
                     </span>
                   </div>
                 </div>

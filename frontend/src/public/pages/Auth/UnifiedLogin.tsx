@@ -64,11 +64,6 @@ export const UnifiedLogin = () => {
             </div>
             <h1 className="text-3xl font-black mb-2">مرحباً بعودتك</h1>
             <p className="text-[var(--color-text-muted)]">الرجاء إدخال بياناتك للدخول إلى النظام</p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-3 leading-relaxed">
-              ورشة: <span dir="ltr">admin@decozr.local</span> / admin123
-              <br />
-              عميل: <span dir="ltr">customer@decozr.local</span> / customer123
-            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -80,7 +75,8 @@ export const UnifiedLogin = () => {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@decozr.local"
+                  placeholder="البريد الإلكتروني"
+                  autoComplete="username"
                   className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl px-12 py-4 text-sm focus:outline-none focus:border-[var(--color-primary-500)] transition-colors"
                   dir="ltr"
                 />
@@ -101,6 +97,7 @@ export const UnifiedLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl px-12 py-4 text-sm focus:outline-none focus:border-[var(--color-primary-500)] transition-colors tracking-widest"
                   dir="ltr"
                 />

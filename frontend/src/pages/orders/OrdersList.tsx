@@ -68,8 +68,10 @@ export const OrdersList = () => {
     const t = setTimeout(() => setDebouncedSearch(globalFilter.trim()), 350);
     return () => clearTimeout(t);
   }, [globalFilter]);
-  const { data: ordersResponse, isLoading: loading, isError, error, refetch } = useOrdersList(
+  const { data: ordersResponse, isLoading: loading, isError, error, refetch, isFetching } = useOrdersList(
     debouncedSearch ? { search: debouncedSearch } : undefined,
+    undefined,
+    { page: 1, limit: 100, total: 0, totalPages: 1 },
   );
   const data = useMemo(() => {
     const rawOrders = Array.isArray(ordersResponse?.data)
@@ -425,6 +427,18 @@ export const OrdersList = () => {
                       </TableCell>
                     </TableRow>
                   ))
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-64 text-center">
+                      <p className="text-[var(--color-danger)] font-bold mb-2">تعذر تحميل الطلبات</p>
+                      <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                        {(error as any)?.message || 'تحقق من الاتصال ثم أعد المحاولة'}
+                      </p>
+                      <Button variant="outline" size="sm" onClick={() => refetch()}>
+                        إعادة المحاولة
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow
@@ -476,11 +490,12 @@ export const OrdersList = () => {
         )}
 
         {/* Pagination */}
-        {viewMode === 'table' && (
+        {viewMode === 'table' && !loading && (
           <div className="flex items-center justify-between p-4 border-t border-[var(--color-border)] bg-[var(--color-bg-main)]/50">
             <div className="flex items-center gap-2">
               <span className="text-sm text-[var(--color-text-muted)]">
                 نعرض {table.getRowModel().rows.length} من أصل {table.getFilteredRowModel().rows.length} طلب
+                {isFetching ? ' · جاري التحديث…' : ''}
               </span>
             </div>
             <div className="flex items-center gap-2">

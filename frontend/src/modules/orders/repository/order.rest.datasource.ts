@@ -18,7 +18,12 @@ export class RestOrderDataSource implements OrderDataSource {
   private readonly endpoint = '/orders';
 
   async findAll(filter?: Filter, sort?: Sort, pagination?: Partial<Pagination>): Promise<PaginatedResponse<Order>> {
-    const params = { ...filter, ...sort, ...pagination };
+    const params: Record<string, unknown> = { ...(filter || {}) };
+    if (pagination?.page != null) params.page = pagination.page;
+    if (pagination?.limit != null) params.limit = pagination.limit;
+    if (sort?.field) params.sortBy = sort.field;
+    if (sort?.order) params.sortOrder = sort.order;
+
     const response: any = await apiClient.get(this.endpoint, { params });
     // response is { data, meta }
     return {

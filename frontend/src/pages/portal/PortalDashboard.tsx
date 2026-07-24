@@ -248,7 +248,7 @@ export const PortalDashboard = () => {
           onClick={() => navigate('/portal/invoices')}
         />
         <PortalKpiCard
-          label="الرصيد"
+          label="المستحق"
           value={`${Number(s.remaining || 0).toLocaleString()} دج`}
           icon={<Wallet className="w-5 h-5" />}
           tone="emerald"

@@ -28,7 +28,7 @@ export const CustomerProfile = ({ data }: { data: any }) => {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-[var(--color-bg-sidebar)] rounded-lg border border-[var(--color-border)]">
           <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mb-1">
-            <DollarSign className="w-4 h-4" /> الرصيد الحالي
+            <DollarSign className="w-4 h-4" /> المستحق الحالي
           </div>
           <div className={`font-bold text-lg ${data.balance > 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`}>
             {data.balance?.toLocaleString()} د.ج

@@ -76,7 +76,7 @@ const MachineStatus = ({ data }: { data: any }) => {
   return (
     <div className="space-y-3">
       {topDesigns.length === 0 && (
-        <p className="text-sm text-[#94A3B8]">لا بيانات تصاميم بعد</p>
+        <p className="text-sm text-[#94A3B8]">لا تصاميم مبيعة بعد — ستظهر هنا الأكثر طلباً</p>
       )}
       {topDesigns.map((d: any, i: number) => (
         <div
@@ -132,10 +132,17 @@ const WidgetRenderer = ({
         return <MachineStatus data={data} />;
       case 'RECENT_ACTIVITY':
         return <RecentActivity />;
+      case 'CALENDAR':
+      case 'APPROVALS_PENDING':
+        return null;
       default:
-        return <div className="text-[#94A3B8] p-4 text-center text-sm">غير مدعوم</div>;
+        // Hide unfinished widget types instead of showing "غير مدعوم"
+        return null;
     }
   };
+
+  const content = renderContent();
+  if (content === null && !isLoading) return null;
 
   return (
     <div
@@ -172,7 +179,7 @@ const WidgetRenderer = ({
           </button>
         </div>
       </div>
-      {!widget.isCollapsed && <div className="p-4 sm:p-5">{renderContent()}</div>}
+      {!widget.isCollapsed && <div className="p-4 sm:p-5">{content}</div>}
     </div>
   );
 };
@@ -191,7 +198,7 @@ export const Dashboard = () => {
   });
 
   const visibleWidgets = [...widgets]
-    .filter((w) => !w.isHidden)
+    .filter((w) => !w.isHidden && w.type !== 'CALENDAR' && w.type !== 'APPROVALS_PENDING')
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;

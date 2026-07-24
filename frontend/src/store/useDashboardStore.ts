@@ -37,9 +37,10 @@ const defaultWidgets: WidgetConfig[] = [
   { id: 'w2', type: 'KPI_ORDERS', title: 'الطلبات النشطة', isHidden: false, isCollapsed: false, isPinned: true, w: 1, h: 1, order: 2 },
   { id: 'w3', type: 'KPI_TASKS', title: 'المهام المعلقة', isHidden: false, isCollapsed: false, isPinned: false, w: 1, h: 1, order: 3 },
   { id: 'w4', type: 'KPI_INVENTORY', title: 'نواقص المخزون', isHidden: false, isCollapsed: false, isPinned: false, w: 1, h: 1, order: 4 },
-  { id: 'w5', type: 'MACHINE_STATUS', title: 'حالة الآلات', isHidden: false, isCollapsed: false, isPinned: false, w: 2, h: 2, order: 5 },
-  { id: 'w6', type: 'CALENDAR', title: 'التقويم', isHidden: false, isCollapsed: false, isPinned: false, w: 2, h: 2, order: 6 },
-  { id: 'w7', type: 'APPROVALS_PENDING', title: 'موافقات قيد الانتظار', isHidden: false, isCollapsed: false, isPinned: false, w: 2, h: 1, order: 7 },
+  { id: 'w5', type: 'MACHINE_STATUS', title: 'أفضل التصاميم', isHidden: false, isCollapsed: false, isPinned: false, w: 2, h: 2, order: 5 },
+  // Hidden until features ship — avoids "غير مدعوم" empty shells
+  { id: 'w6', type: 'CALENDAR', title: 'التقويم', isHidden: true, isCollapsed: false, isPinned: false, w: 2, h: 2, order: 6 },
+  { id: 'w7', type: 'APPROVALS_PENDING', title: 'موافقات قيد الانتظار', isHidden: true, isCollapsed: false, isPinned: false, w: 2, h: 1, order: 7 },
   { id: 'w8', type: 'RECENT_ACTIVITY', title: 'أحدث النشاطات', isHidden: false, isCollapsed: false, isPinned: false, w: 2, h: 2, order: 8 },
 ];
 
@@ -65,7 +66,8 @@ export const useDashboardStore = create<DashboardState>()(
       resetToDefault: () => set({ widgets: defaultWidgets })
     }),
     {
-      name: 'decozr-dashboard-layout'
+      // bump key so previous layouts with unsupported widgets reset
+      name: 'decozr-dashboard-layout-v2',
     }
   )
 );

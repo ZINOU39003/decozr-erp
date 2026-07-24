@@ -88,6 +88,7 @@ export class CustomersService {
             where: { deletedAt: null },
             select: {
               id: true,
+              status: true,
               invoices: {
                 where: { deletedAt: null },
                 select: {
@@ -107,6 +108,7 @@ export class CustomersService {
       this.prisma.customer.count({ where }),
     ]);
 
+    const closedStatuses = ['delivered', 'completed', 'cancelled', 'returned', 'rejected'];
     const enriched = data.map((c) => {
       let invoiced = 0;
       let paid = 0;
@@ -122,11 +124,16 @@ export class CustomersService {
       }
       const remaining = Math.max(0, invoiced - paid);
       const { orders, customRequests, ...rest } = c as any;
+      const ordersList = orders || [];
       return {
         ...rest,
         invoiced_total: invoiced,
         paid_total: paid,
         remaining_total: remaining,
+        orders_count: ordersList.length,
+        active_orders_count: ordersList.filter(
+          (o: any) => !closedStatuses.includes(o.status),
+        ).length,
         designs_count: customRequests?.length || 0,
         open_designs:
           customRequests?.filter((d: any) =>
@@ -242,6 +249,8 @@ export class CustomersService {
       paid_total: paid,
       remaining_total: remaining,
       orders_summary: byStatus,
+      orders_count: orders.length,
+      active_orders_count: byStatus.active,
       designs_count: customer.customRequests?.length || 0,
     };
   }

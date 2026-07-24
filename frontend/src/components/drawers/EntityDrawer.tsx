@@ -89,7 +89,7 @@ export const EntityDrawer = ({ data }: { data: EntityDrawerData }) => {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-[var(--color-bg-main)] rounded-xl border border-[var(--color-border)] flex flex-col items-center text-center">
-                <span className="text-xs text-[var(--color-text-muted)] mb-1">الرصيد</span>
+                <span className="text-xs text-[var(--color-text-muted)] mb-1">المستحق</span>
                 <span className={`font-bold ${data.balance > 0 ? 'text-[var(--color-danger)]' : data.balance < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-main)]'}`}>
                   {data.balance ? data.balance.toLocaleString() : 0} د.ج
                 </span>
