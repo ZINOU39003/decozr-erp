@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../../components/ui/Button';
 import { getPublicStorefront } from '../../services/api';
+import { HomeInstallAppButton } from '../../components/pwa/PwaInstallBanner';
 
 const DEFAULT_HERO =
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2500';
@@ -48,7 +49,7 @@ export const Home = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen pb-24">
       <section className="relative pt-28 pb-16 lg:pt-40 lg:pb-28 overflow-hidden flex items-center justify-center min-h-[88vh]">
         <div className="absolute inset-0 z-0">
           <img src={heroImage} alt={brand} className="w-full h-full object-cover" />
@@ -172,6 +173,8 @@ export const Home = () => {
           </Button>
         </div>
       </section>
+
+      <HomeInstallAppButton />
     </div>
   );
 };

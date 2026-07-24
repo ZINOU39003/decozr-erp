@@ -56,7 +56,7 @@ import { AdminPortalHub } from './pages/admin/AdminPortalHub';
 import { Toaster } from 'sonner';
 import { GlobalModals } from './components/global/GlobalModals';
 import { GlobalDrawers } from './components/global/GlobalDrawers';
-import { PwaInstallBanner } from './components/pwa/PwaInstallBanner';
+import { PwaInstallCapture } from './components/pwa/PwaInstallBanner';
 
 import { PublicLayout } from './storefront/components/PublicLayout';
 import { Home } from './storefront/pages/Home';
@@ -232,7 +232,7 @@ function App() {
         <GlobalModals />
         <GlobalDrawers />
         <CommandPalette />
-        <PwaInstallBanner />
+        <PwaInstallCapture />
         <AppRoutes />
       </Router>
       <ReactQueryDevtools initialIsOpen={false} />
